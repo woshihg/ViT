@@ -1,12 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
-import os  # 导入 os 模块来处理路径
 from DataSet import ImageFolderDataModule  # 导入自定义的数据加载模块
-
+import matplotlib.pyplot as plt
 
 # --- 1. ViT 模块代码 (与之前相同) ---
 
@@ -150,6 +146,56 @@ def validate_model(model, val_loader, criterion, device):
     print(f'Validation Loss: {val_loss:.3f} | Validation Acc: {val_acc:.3f}%')
     return val_loss, val_acc
 
+def train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs):
+    """
+    训练循环封装函数，返回包含训练/验证损失与精度的历史记录字典。
+    """
+    history = {
+        "train_loss": [],
+        "train_acc": [],
+        "val_loss": [],
+        "val_acc": []
+    }
+    for epoch in range(epochs):
+        print(f"\n--- Epoch {epoch + 1}/{epochs} ---")
+        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        print(f'Epoch {epoch + 1} Summary: Train Loss: {train_loss:.3f} | Train Acc: {train_acc:.3f}%')
+        val_loss, val_acc = validate_model(model, val_loader, criterion, device)
+        scheduler.step()
+        history["train_loss"].append(train_loss)
+        history["train_acc"].append(train_acc)
+        history["val_loss"].append(val_loss)
+        history["val_acc"].append(val_acc)
+    return history
+
+def visualize(history, path='loss.png'):
+    """
+    可视化训练和验证的损失与精度曲线。
+    """
+    epochs = range(1, len(history["train_loss"]) + 1)
+
+    plt.figure(figsize=(12, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, history["train_loss"], label='Train Loss')
+    plt.plot(epochs, history["val_loss"], label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, history["train_acc"], label='Train Accuracy')
+    plt.plot(epochs, history["val_acc"], label='Validation Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy (%)')
+    plt.title('Training and Validation Accuracy')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+    plt.savefig(path)
+
 
 # --- 3. 主执行函数 ---
 
@@ -205,19 +251,6 @@ if __name__ == '__main__':
 
     # --- 训练循环 ---
     print("Starting training...")
-    for epoch in range(EPOCHS):
-        print(f"\n--- Epoch {epoch + 1}/{EPOCHS} ---")
-
-        train_loss, train_acc = train_one_epoch(
-            model, train_loader, criterion, optimizer, device
-        )
-        print(f'Epoch {epoch + 1} Summary: Train Loss: {train_loss:.3f} | Train Acc: {train_acc:.3f}%')
-
-        # --- 修改：调用 validate_model 并使用 val_loader ---
-        val_loss, val_acc = validate_model(
-            model, val_loader, criterion, device
-        )
-
-        scheduler.step()
-
+    history = model.train_model(model, train_loader, val_loader, criterion, optimizer, device, EPOCHS)
     print("Training finished!")
+    model.visualize(history, path='vit_training_history.png')
