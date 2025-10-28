@@ -35,7 +35,6 @@ class ImageFolderDataModule:
         self.transform_train = transforms.Compose([
             transforms.RandomResizedCrop(32, scale=(0.8, 1.0), ratio=(0.9, 1.1)),
             transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply(
                 [transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1)],
                 p=0.8
@@ -43,9 +42,9 @@ class ImageFolderDataModule:
             transforms.RandomRotation(15),
             transforms.RandomPerspective(distortion_scale=0.1, p=0.5),
             transforms.RandomApply([transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0))], p=0.5),
-            transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
             transforms.ToTensor(),
             transforms.Normalize(cifar10_mean, cifar10_std),
+            transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
         ])
         self.transform_val = transforms.Compose([
             transforms.ToTensor(),

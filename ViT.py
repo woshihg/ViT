@@ -1,3 +1,7 @@
+import csv
+import os
+from typing import Dict, List
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -174,29 +178,73 @@ def visualize(history, path='loss.png'):
     """
     epochs = range(1, len(history["train_loss"]) + 1)
 
-    plt.figure(figsize=(12, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs, history["train_loss"], label='Train Loss')
-    plt.plot(epochs, history["val_loss"], label='Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.title('Training and Validation Loss')
-    plt.legend()
+    axes[0].plot(epochs, history["train_loss"], label='Train Loss')
+    axes[0].plot(epochs, history["val_loss"], label='Validation Loss')
+    axes[0].set_xlabel('Epochs')
+    axes[0].set_ylabel('Loss')
+    axes[0].set_title('Training and Validation Loss')
+    axes[0].legend()
 
-    plt.subplot(1, 2, 2)
-    plt.plot(epochs, history["train_acc"], label='Train Accuracy')
-    plt.plot(epochs, history["val_acc"], label='Validation Accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy (%)')
-    plt.title('Training and Validation Accuracy')
-    plt.legend()
+    axes[1].plot(epochs, history["train_acc"], label='Train Accuracy')
+    axes[1].plot(epochs, history["val_acc"], label='Validation Accuracy')
+    axes[1].set_xlabel('Epochs')
+    axes[1].set_ylabel('Accuracy (%)')
+    axes[1].set_title('Training and Validation Accuracy')
+    axes[1].legend()
 
-    plt.tight_layout()
+    fig.tight_layout()
+
+    # 确保目录存在
+    dirpath = os.path.dirname(path)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
+
+    # 使用 fig.savefig 保存（在 show 之前），并关闭 figure
+    fig.savefig(path, bbox_inches='tight', dpi=300)
     plt.show()
-    plt.savefig(path)
+    plt.close(fig)
 
+def save_history_csv(history: Dict[str, List[float]], path: str):
+    """保存为 CSV，每行对应一个 epoch。"""
+    keys = ["train_loss", "train_acc", "val_loss", "val_acc"]
+    length = len(history.get(keys[0], []))
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["epoch"] + keys)
+        for i in range(length):
+            row = [i + 1] + [history[k][i] for k in keys]
+            writer.writerow(row)
 
+def init_vit_weights(m):
+    """对模块 m 进行常用初始化（供 model.apply 使用）。"""
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            nn.init.zeros_(m.bias)
+    elif isinstance(m, nn.Conv2d):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        if m.bias is not None:
+            nn.init.zeros_(m.bias)
+    elif isinstance(m, nn.LayerNorm):
+        nn.init.ones_(m.weight)
+        nn.init.zeros_(m.bias)
+
+def initialize_vit_model(model, std=0.02):
+    """
+    1) 对模块参数应用常规模块初始化（model.apply）。
+    2) 单独初始化可学习的位置嵌入与 cls token（模型属性，必须显式处理）。
+    """
+    model.apply(init_vit_weights)
+
+    # 使用截断正态（如果可用）或普通正态作为替代
+    try:
+        nn.init.trunc_normal_(model.pos_embed, std=std)
+        nn.init.trunc_normal_(model.cls_token, std=std)
+    except AttributeError:
+        nn.init.normal_(model.pos_embed, mean=0.0, std=std)
+        nn.init.normal_(model.cls_token, mean=0.0, std=std)
 # --- 3. 主执行函数 ---
 
 if __name__ == '__main__':
@@ -224,7 +272,7 @@ if __name__ == '__main__':
         train_subdir='CIFAR10_imbalanced/CIFAR10_unbalance',
         val_subdir='CIFAR10_balanced/CIFAR10_balance',
         batch_size=BATCH_SIZE,
-        num_workers=2,
+        num_workers=8,
         shuffle_train=True
     )
     data_module.setup()
@@ -245,6 +293,8 @@ if __name__ == '__main__':
         dropout=DROPOUT
     ).to(device)
 
+    init_vit_weights(model)
+
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
@@ -253,4 +303,7 @@ if __name__ == '__main__':
     print("Starting training...")
     history = train_model(model, train_loader, val_loader, criterion, optimizer, device, EPOCHS)
     print("Training finished!")
+    # 存储数据表history到本地
+    save_history_csv(history, "history.csv")
+
     visualize(history, path='vit_training_history.png')
