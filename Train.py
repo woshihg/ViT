@@ -3,6 +3,7 @@ from torch import nn
 
 from ViT import VisionTransformer
 from DyViT import DynamicVisionTransformer
+from AViT import AdaptiveVisionTransformer
 import os
 import time
 import csv
@@ -182,7 +183,7 @@ if __name__ == '__main__':
     BATCH_SIZE = 128
     LEARNING_RATE = 1e-4
     KEEP_RATE = 0.7 # 设置每个动态注意力层的 token 保留率
-    model = 'DyViT'
+    MODEL_TYPE = 'DyViT'
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
@@ -216,7 +217,20 @@ if __name__ == '__main__':
 
     # --- 初始化模型、损失函数和优化器 (与之前相同) ---
     print("Initializing model...")
-    if model == 'DyViT':
+    if MODEL_TYPE == 'AViT':
+        model = AdaptiveVisionTransformer(
+            img_size=IMG_SIZE,
+            patch_size=PATCH_SIZE,
+            in_channels=3,
+            embed_dim=EMBED_DIM,
+            num_layers=NUM_LAYERS,
+            num_heads=NUM_HEADS,
+            mlp_dim=MLP_DIM,
+            num_classes=NUM_CLASSES,
+            dropout=DROPOUT,
+            keep_rate=KEEP_RATE # 传入保留率
+        ).to(device)
+    elif MODEL_TYPE == 'DyViT':
         model = DynamicVisionTransformer(
             img_size=IMG_SIZE,
             patch_size=PATCH_SIZE,
