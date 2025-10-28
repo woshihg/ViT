@@ -183,7 +183,7 @@ if __name__ == '__main__':
     BATCH_SIZE = 128
     LEARNING_RATE = 1e-4
     KEEP_RATE = 0.7 # 设置每个动态注意力层的 token 保留率
-    MODEL_TYPE = 'DyViT'
+    MODEL_TYPE = 'AViT'
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
