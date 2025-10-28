@@ -209,7 +209,7 @@ if __name__ == '__main__':
     NUM_HEADS = 8
     MLP_DIM = 1024
     DROPOUT = 0.1
-    EPOCHS = 20
+    EPOCHS = 100
     BATCH_SIZE = 128
     LEARNING_RATE = 1e-4
 
@@ -221,8 +221,8 @@ if __name__ == '__main__':
     # 使用自定义的数据模块加载数据
     data_module = ImageFolderDataModule(
         base_data_path='/home/woshihg/CIFAR10',
-        train_subdir='CIFAR10_balanced/CIFAR10_balance',
-        val_subdir='CIFAR10_imbalanced/CIFAR10_unbalance',
+        train_subdir='CIFAR10_imbalanced/CIFAR10_unbalance',
+        val_subdir='CIFAR10_balanced/CIFAR10_balance',
         batch_size=BATCH_SIZE,
         num_workers=2,
         shuffle_train=True
@@ -251,6 +251,6 @@ if __name__ == '__main__':
 
     # --- 训练循环 ---
     print("Starting training...")
-    history = model.train_model(model, train_loader, val_loader, criterion, optimizer, device, EPOCHS)
+    history = train_model(model, train_loader, val_loader, criterion, optimizer, device, EPOCHS)
     print("Training finished!")
-    model.visualize(history, path='vit_training_history.png')
+    visualize(history, path='vit_training_history.png')

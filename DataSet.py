@@ -33,8 +33,17 @@ class ImageFolderDataModule:
         cifar10_mean = (0.4914, 0.4822, 0.4465)
         cifar10_std = (0.2470, 0.2435, 0.2616)
         self.transform_train = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
+            transforms.RandomResizedCrop(32, scale=(0.8, 1.0), ratio=(0.9, 1.1)),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomApply(
+                [transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1)],
+                p=0.8
+            ),
+            transforms.RandomRotation(15),
+            transforms.RandomPerspective(distortion_scale=0.1, p=0.5),
+            transforms.RandomApply([transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0))], p=0.5),
+            transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
             transforms.ToTensor(),
             transforms.Normalize(cifar10_mean, cifar10_std),
         ])
